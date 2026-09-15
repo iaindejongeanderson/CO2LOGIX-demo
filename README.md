@@ -16,7 +16,7 @@ Change the growth parameters, injection rate and injection duration, then watch 
 across the seven UK saline aquifer storage units and read off how much CO₂ has been stored by the
 time peak reservoir pressure reaches 90% of fracture pressure.
 
-**Live:** `https://<user>.github.io/<repo>/`
+**Live:** <https://iaindejongeanderson.github.io/CO2LOGIX-demo/>
 
 ---
 
@@ -131,8 +131,9 @@ repo does not sit alongside the `Github` and `CO2LOGIX v1.0` folders.
 
 ## Hosting on GitHub Pages
 
-Push `index.html`, `app.js` and `data.js` to a repository, then **Settings → Pages → Deploy from
-a branch**, root folder. `.nojekyll` is already present so nothing is filtered.
+`index.html`, `app.js` and `data.js` are the whole site — no build step. In the repository,
+go to **Settings → Pages → Deploy from a branch** and select branch `main`, folder `/ (root)`.
+`.nojekyll` is already present so nothing is filtered.
 
 The page also runs straight from disk — open `index.html` in a browser. Data is loaded via a
 `<script>` tag rather than `fetch`, so there is no `file://` CORS problem.
