@@ -1,0 +1,654 @@
+<title>CO2LOGIX UK Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;450;500;600&display=swap">
+
+<style>
+/* ---------------------------------------------------------------- tokens */
+:root {
+  color-scheme: light;
+
+  --plane:        #eceff3;
+  --surface:      #ffffff;
+  --surface-2:    #f6f8fa;
+  --surface-3:    #eef2f6;
+  --ink:          #0f1720;
+  --ink-2:        #4c5966;
+  --ink-3:        #78848f;
+  --line:         #dde3ea;
+  --line-2:       #c6d0da;
+  --accent:       #1c5cab;
+  --accent-soft:  #e4edf9;
+  --series:       #2a78d6;
+  --series-fill:  rgba(42,120,214,.16);
+  --critical:     #c9302f;
+  --serious:      #d9713f;
+  --good:         #0a7c2f;
+  --shadow:       0 1px 2px rgba(15,23,32,.06), 0 6px 20px -12px rgba(15,23,32,.25);
+
+  /* the map is a committed instrument panel: identical in both themes */
+  --map-plane:    #0d141b;
+  --map-land:     #19232d;
+  --map-coast:    #3c4c5b;
+  --map-aq:       #93a7ba;
+  --map-ink:      #ccd8e2;
+  --map-ink-2:    #8a99a7;
+  --map-line:     rgba(255,255,255,.10);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --plane:       #090d12;
+    --surface:     #121920;
+    --surface-2:   #171f27;
+    --surface-3:   #1d262f;
+    --ink:         #e9eff5;
+    --ink-2:       #a4b2bf;
+    --ink-3:       #7b8794;
+    --line:        #242f3a;
+    --line-2:      #33404d;
+    --accent:      #6da7ec;
+    --accent-soft: #16273c;
+    --series:      #3987e5;
+    --series-fill: rgba(57,135,229,.20);
+    --critical:    #e66767;
+    --serious:     #ec835a;
+    --good:        #2ea84d;
+    --shadow:      0 1px 2px rgba(0,0,0,.4), 0 6px 20px -12px rgba(0,0,0,.8);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --plane:       #090d12;
+  --surface:     #121920;
+  --surface-2:   #171f27;
+  --surface-3:   #1d262f;
+  --ink:         #e9eff5;
+  --ink-2:       #a4b2bf;
+  --ink-3:       #7b8794;
+  --line:        #242f3a;
+  --line-2:      #33404d;
+  --accent:      #6da7ec;
+  --accent-soft: #16273c;
+  --series:      #3987e5;
+  --series-fill: rgba(57,135,229,.20);
+  --critical:    #e66767;
+  --serious:     #ec835a;
+  --good:        #2ea84d;
+  --shadow:      0 1px 2px rgba(0,0,0,.4), 0 6px 20px -12px rgba(0,0,0,.8);
+}
+
+/* ---------------------------------------------------------------- base */
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--plane);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3 { font-family: Archivo, system-ui, sans-serif; margin: 0; text-wrap: balance; }
+
+.num { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+
+.eyebrow {
+  font-family: Archivo, system-ui, sans-serif;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+:where(button, input, select, a):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* ---------------------------------------------------------------- shell */
+.app {
+  max-width: 1720px;
+  margin: 0 auto;
+  padding-inline: 16px;
+  padding-block: 18px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 28px;
+  padding-bottom: 14px;
+  border-bottom: 2px solid var(--ink);
+}
+.topbar h1 { font-size: 26px; font-weight: 700; letter-spacing: -.015em; }
+.topbar .tagline { color: var(--ink-2); font-size: 13.5px; max-width: 62ch; margin-top: 2px; }
+.topbar .provenance { font-size: 11.5px; color: var(--ink-3); margin-top: 6px; }
+.topbar .provenance code {
+  font-family: "IBM Plex Mono", monospace; font-size: 11px;
+  background: var(--surface-3); padding: 1px 5px; border-radius: 3px;
+}
+
+.presets { display: flex; flex-direction: column; gap: 7px; align-items: flex-start; }
+.preset-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.preset {
+  font-family: Archivo, sans-serif; font-size: 12px; font-weight: 600;
+  padding: 6px 11px;
+  background: var(--surface); color: var(--ink-2);
+  border: 1px solid var(--line-2); border-radius: 2px;
+  cursor: pointer; transition: background .12s, color .12s, border-color .12s;
+}
+.preset:hover { background: var(--surface-3); color: var(--ink); }
+.preset[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+
+/* ---------------------------------------------------------------- grid */
+.layout {
+  display: grid;
+  grid-template-columns: 296px minmax(380px, 1fr) 430px;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 1400px) {
+  .layout { grid-template-columns: 280px minmax(340px, 1fr); }
+  .analysis { grid-column: 1 / -1; }
+  .analysis .stack { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; align-items: start; }
+}
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+  .analysis { grid-column: auto; }
+}
+
+/* ---------------------------------------------------------------- panels */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  box-shadow: var(--shadow);
+}
+.panel-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line);
+}
+.panel-head h2 { font-size: 13px; font-weight: 600; letter-spacing: .01em; }
+.panel-head .hint { font-size: 11px; color: var(--ink-3); }
+.panel-body { padding: 14px; }
+
+/* ---------------------------------------------------------------- rail */
+.rail { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 14px; }
+@media (max-width: 900px) { .rail { position: static; } }
+
+.group + .group { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.group > .eyebrow { display: block; margin-bottom: 12px; }
+
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field[hidden] { display: none; }
+.field + .field { margin-top: 14px; }
+.field-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.field label { font-size: 12.5px; color: var(--ink-2); font-weight: 450; }
+.field .value { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.field .unit { color: var(--ink-3); font-weight: 400; }
+.field .note { font-size: 11px; color: var(--ink-3); line-height: 1.4; }
+
+input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 18px; background: transparent; cursor: pointer; margin: 0;
+}
+input[type="range"]::-webkit-slider-runnable-track { height: 3px; background: var(--line-2); border-radius: 2px; }
+input[type="range"]::-moz-range-track { height: 3px; background: var(--line-2); border-radius: 2px; }
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--accent); border: 2px solid var(--surface);
+  box-shadow: 0 0 0 1px var(--accent);
+  margin-top: -5.5px;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--surface);
+  background: var(--accent); box-shadow: 0 0 0 1px var(--accent);
+}
+
+.seg { display: flex; border: 1px solid var(--line-2); border-radius: 2px; overflow: hidden; }
+.seg button {
+  flex: 1; padding: 6px 4px; font-size: 12px; font-family: "IBM Plex Sans", sans-serif;
+  background: var(--surface); color: var(--ink-2); border: 0; cursor: pointer;
+}
+.seg button + button { border-left: 1px solid var(--line-2); }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
+.checkline { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-2); cursor: pointer; }
+.checkline input { accent-color: var(--accent); margin: 0; }
+
+.status {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11.5px; color: var(--ink-3);
+  padding: 9px 14px; border-top: 1px solid var(--line);
+}
+.status .bar { flex: 1; height: 3px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.status .bar span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .1s linear; }
+
+/* ---------------------------------------------------------------- map */
+.mapwrap { overflow: hidden; }
+.mapstage { position: relative; background: var(--map-plane); }
+#map { display: block; width: 100%; height: 664px; }
+@media (max-width: 900px) { #map { height: 460px; } }
+
+.map-tooltip {
+  position: absolute; pointer-events: none; z-index: 4;
+  background: rgba(13,20,27,.94); color: var(--map-ink);
+  border: 1px solid var(--map-line); border-radius: 3px;
+  padding: 7px 9px; font-size: 11.5px; line-height: 1.45;
+  min-width: 128px; opacity: 0; transition: opacity .1s;
+}
+.map-tooltip strong { font-family: Archivo, sans-serif; font-size: 11.5px; display: block; color: #fff; }
+.map-tooltip .num { font-size: 12.5px; }
+
+.map-legend {
+  position: absolute; left: 14px; bottom: 14px; z-index: 3;
+  background: rgba(13,20,27,.9); border: 1px solid var(--map-line); border-radius: 3px;
+  padding: 9px 11px 10px; color: var(--map-ink); width: 224px;
+}
+.map-legend .eyebrow { color: var(--map-ink-2); }
+.legend-bar { height: 9px; border-radius: 1px; margin: 7px 0 3px; }
+.legend-ticks { display: flex; justify-content: space-between; font-family: "IBM Plex Mono", monospace; font-size: 9.5px; color: var(--map-ink-2); }
+.legend-wells { margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--map-line); }
+.legend-status { display: flex; gap: 12px; margin: 8px 0 0 2px; font-size: 10.5px; }
+.legend-status span { display: flex; align-items: center; gap: 6px; color: var(--map-ink-2); }
+.legend-status i.dot { width: 8px; height: 8px; border-radius: 50%; display: block; flex: none; }
+.legend-status i.below { background: #6da7ec; }
+.legend-status i.at { background: #ec835a; box-shadow: 0 0 0 2.5px rgba(236,131,90,.35); }
+.legend-status i.over { background: #d03b3b; box-shadow: 0 0 0 2.5px rgba(208,59,59,.45); }
+.legend-foot { margin: 9px 0 0; font-size: 9.5px; line-height: 1.35; color: var(--map-ink-2); opacity: .85; }
+.legend-foot b { color: var(--map-ink); font-weight: 600; }
+
+.map-scale {
+  position: absolute; right: 14px; bottom: 14px; z-index: 3;
+  color: var(--map-ink-2); font-family: "IBM Plex Mono", monospace; font-size: 10px;
+  text-align: center;
+}
+.map-scale .rule { height: 5px; border: 1px solid var(--map-ink-2); border-top: 0; margin-bottom: 3px; }
+
+.timeline { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-top: 1px solid var(--line); }
+.timeline .play {
+  width: 32px; height: 32px; flex: none; border-radius: 50%;
+  border: 1px solid var(--line-2); background: var(--surface); color: var(--ink);
+  cursor: pointer; display: grid; place-items: center; padding: 0;
+}
+.timeline .play:hover { background: var(--surface-3); }
+.timeline .play svg { width: 13px; height: 13px; fill: currentColor; }
+.timeline .yearbox { flex: none; width: 92px; }
+.timeline .yearbox .eyebrow { display: block; line-height: 1.2; }
+.timeline .yearbox .y { font-family: "IBM Plex Mono", monospace; font-size: 19px; font-weight: 500; line-height: 1.1; }
+.timeline input[type="range"] { flex: 1; }
+
+/* ---------------------------------------------------------------- analysis */
+.analysis { display: flex; flex-direction: column; gap: 14px; }
+.analysis .stack { display: flex; flex-direction: column; gap: 14px; }
+
+.headline { padding: 16px 16px 15px; }
+.headline .eyebrow { display: block; margin-bottom: 9px; }
+.headline .big {
+  font-family: Archivo, sans-serif; font-weight: 700;
+  font-size: 46px; line-height: 1; letter-spacing: -.025em;
+  display: flex; align-items: baseline; gap: 7px;
+}
+.headline .big em { font-style: normal; font-size: 21px; font-weight: 600; color: var(--ink-2); }
+.headline .caption { color: var(--ink-2); font-size: 12.5px; margin-top: 8px; max-width: 46ch; }
+.headline.over .big { color: var(--critical); }
+.headline.under .big { color: var(--good); }
+
+.facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border-top: 1px solid var(--line); }
+.facts div { background: var(--surface); padding: 11px 14px; }
+.facts .k { font-size: 10.5px; color: var(--ink-3); letter-spacing: .04em; text-transform: uppercase; font-family: Archivo, sans-serif; font-weight: 600; }
+.facts .v { font-family: "IBM Plex Mono", monospace; font-size: 16px; font-weight: 500; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.facts .v small { font-size: 11px; color: var(--ink-3); font-weight: 400; }
+
+.chart { position: relative; padding: 4px 4px 0; }
+.chart + .chart { border-top: 1px solid var(--line); }
+.chart-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 9px 10px 0; }
+.chart-head h3 { font-size: 12px; font-weight: 600; }
+.chart-head .sub { font-size: 10.5px; color: var(--ink-3); font-family: "IBM Plex Mono", monospace; }
+.chart svg { display: block; width: 100%; }
+.chart-tip {
+  position: absolute; z-index: 5; pointer-events: none; opacity: 0; transition: opacity .1s;
+  background: var(--surface); border: 1px solid var(--line-2); border-radius: 3px;
+  box-shadow: var(--shadow); padding: 7px 9px; font-size: 11.5px; min-width: 132px;
+}
+.chart-tip .ty { font-family: Archivo, sans-serif; font-weight: 600; font-size: 11px; color: var(--ink-3); letter-spacing: .05em; text-transform: uppercase; }
+.chart-tip .row { display: flex; justify-content: space-between; gap: 12px; margin-top: 3px; }
+.chart-tip .row b { font-family: "IBM Plex Mono", monospace; font-weight: 500; font-variant-numeric: tabular-nums; }
+
+table.units { width: 100%; border-collapse: collapse; font-size: 12px; }
+table.units th {
+  text-align: right; font-family: Archivo, sans-serif; font-weight: 600;
+  font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3);
+  padding: 0 0 7px; border-bottom: 1px solid var(--line-2);
+}
+table.units th:first-child, table.units td:first-child { text-align: left; }
+table.units td { padding: 7px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; font-family: "IBM Plex Mono", monospace; text-align: right; }
+table.units td:first-child { font-family: "IBM Plex Sans", sans-serif; color: var(--ink-2); }
+table.units tr:last-child td { border-bottom: 0; }
+table.units .peak { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; width: 100%; }
+table.units .peak i { display: block; width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.tablewrap { overflow-x: auto; }
+
+details.method { margin-top: 2px; }
+details.method summary {
+  cursor: pointer; font-family: Archivo, sans-serif; font-size: 12px; font-weight: 600;
+  padding: 11px 14px; color: var(--ink-2); list-style: none;
+  display: flex; align-items: center; justify-content: space-between;
+}
+details.method summary::-webkit-details-marker { display: none; }
+details.method summary::after { content: "+"; font-size: 15px; color: var(--ink-3); }
+details.method[open] summary::after { content: "\2212"; }
+details.method .panel-body { border-top: 1px solid var(--line); font-size: 12.5px; color: var(--ink-2); }
+details.method p { margin: 0 0 9px; }
+details.method p:last-child { margin-bottom: 0; }
+details.method code { font-family: "IBM Plex Mono", monospace; font-size: 11.5px; background: var(--surface-3); padding: 1px 4px; border-radius: 2px; color: var(--ink); }
+details.method h4 { font-family: Archivo, sans-serif; font-size: 11px; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-3); margin: 14px 0 6px; }
+
+footer.credits {
+  font-size: 11.5px; color: var(--ink-3);
+  border-top: 1px solid var(--line); padding-top: 16px;
+  display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px 32px;
+}
+@media (max-width: 760px) { footer.credits { grid-template-columns: 1fr; } }
+footer.credits .eyebrow { display: block; margin-bottom: 7px; }
+footer.credits p { margin: 0 0 7px; line-height: 1.55; max-width: 72ch; }
+footer.credits p:last-child { margin-bottom: 0; }
+footer.credits a { color: var(--accent); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+footer.credits a:hover { border-bottom-color: var(--accent); }
+
+.warn {
+  margin: 0 14px 14px; padding: 9px 11px; border-radius: 3px;
+  background: color-mix(in srgb, var(--serious) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--serious) 40%, transparent);
+  color: var(--ink-2); font-size: 11.5px;
+}
+.warn[hidden] { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+</style>
+
+<div class="app">
+
+  <header class="topbar">
+    <div class="brand">
+      <h1>CO2LOGIX UK</h1>
+      <p class="tagline">Subsurface pressure increases from CO₂ injection can constrain injectivity and safe operating
+        margins, reducing the dynamic capacity of CO₂ geological storage systems. CO2LOGIX evaluates the scale of
+        that pressure buildup under different growth trajectories.</p>
+      <p class="provenance">UK case study · de Jonge-Anderson, Johnson, Alcalde &amp; Roberts (2026),
+        <em>Int. J. Greenhouse Gas Control</em> <strong>151</strong>, 104608 · code <code>CO2LOGIX v1.0</code></p>
+    </div>
+    <div class="presets">
+      <span class="eyebrow">Published growth scenarios</span>
+      <div class="preset-row" id="presets">
+        <button class="preset" data-k="0.086" type="button">Reference · k 0.086</button>
+        <button class="preset" data-k="0.13" type="button">High · k 0.13</button>
+        <button class="preset" data-k="0.22" type="button">Very high · k 0.22</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+
+    <!-- ------------------------------------------------ controls -->
+    <aside class="rail">
+      <section class="panel">
+        <div class="panel-head"><h2>Simulation parameters</h2></div>
+        <div class="panel-body">
+
+          <div class="group">
+            <span class="eyebrow">Growth</span>
+            <div class="field">
+              <div class="field-top">
+                <label for="c-k">Growth rate <span class="unit">k</span></label>
+                <span class="value" id="v-k">0.086</span>
+              </div>
+              <input type="range" id="c-k" min="0.02" max="0.40" step="0.002" value="0.086">
+              <p class="note">Logistic exponent. Sets how steeply drilling accelerates toward the well ceiling.</p>
+            </div>
+            <div class="field">
+              <div class="field-top">
+                <label for="c-L">Carrying capacity <span class="unit">L</span></label>
+                <span class="value" id="v-L">880 <span class="unit">wells</span></span>
+              </div>
+              <input type="range" id="c-L" min="50" max="3000" step="10" value="880">
+              <p class="note">Ceiling on the total well count the logistic curve approaches.</p>
+            </div>
+          </div>
+
+          <div class="group">
+            <span class="eyebrow">Injection</span>
+            <div class="field">
+              <div class="field-top">
+                <label for="c-rate">Rate per well</label>
+                <span class="value" id="v-rate">1.0 <span class="unit">Mt/yr</span></span>
+              </div>
+              <input type="range" id="c-rate" min="0.1" max="5" step="0.1" value="1">
+            </div>
+            <div class="field">
+              <div class="field-top">
+                <label for="c-inj">Injection years per well</label>
+                <span class="value" id="v-inj">25 <span class="unit">yr</span></span>
+              </div>
+              <input type="range" id="c-inj" min="5" max="50" step="1" value="25">
+              <p class="note">After this, a well stops injecting and its pressure contribution is held at its final value.</p>
+            </div>
+          </div>
+
+          <div class="group">
+            <span class="eyebrow">Deployment</span>
+            <div class="field">
+              <div class="field-top"><label for="c-years">Drilling period</label>
+                <span class="value" id="v-years">100 <span class="unit">yr</span></span></div>
+              <input type="range" id="c-years" min="20" max="150" step="5" value="100">
+            </div>
+            <div class="field">
+              <div class="field-top"><label for="c-seed">Placement draw</label>
+                <span class="value" id="v-seed">1</span></div>
+              <input type="range" id="c-seed" min="1" max="20" step="1" value="1">
+              <p class="note">Wells are placed in proportion to storage unit area. Draw 1 is the shipped pool
+                (<code style="font-family:'IBM Plex Mono',monospace">random_state=42</code>); higher draws
+                reshuffle it.</p>
+            </div>
+          </div>
+
+          <div class="group">
+            <span class="eyebrow">Map layers</span>
+            <div style="display:flex; flex-direction:column; gap:9px;">
+              <label class="checkline"><input type="checkbox" id="l-pressure" checked> Pressure field</label>
+              <label class="checkline"><input type="checkbox" id="l-wells" checked> Wells</label>
+              <label class="checkline"><input type="checkbox" id="l-aquifers" checked> Storage unit outlines</label>
+              <label class="checkline"><input type="checkbox" id="l-coast" checked> UK coastline</label>
+            </div>
+          </div>
+
+        </div>
+        <div class="status">
+          <span id="status-text">Ready</span>
+          <span class="bar"><span id="status-bar"></span></span>
+        </div>
+      </section>
+    </aside>
+
+    <!-- ------------------------------------------------ map -->
+    <section class="panel mapwrap">
+      <div class="panel-head">
+        <h2>Pressure field</h2>
+        <span class="hint" id="map-hint">Reservoir pressure as % of fracture pressure</span>
+      </div>
+      <div class="mapstage" id="mapstage">
+        <canvas id="map"></canvas>
+        <div class="map-tooltip" id="map-tip"></div>
+        <div class="map-legend">
+          <span class="eyebrow">Pressure field · % of fracture pressure</span>
+          <div class="legend-bar" id="legend-bar"></div>
+          <div class="legend-ticks"><span>50</span><span>60</span><span>70</span><span>80</span><span>90</span></div>
+          <div class="legend-wells">
+            <span class="eyebrow">Wells · value at the well node</span>
+            <div class="legend-status">
+              <span><i class="dot below"></i>below 90</span>
+              <span><i class="dot at"></i>90–100</span>
+              <span><i class="dot over"></i>&gt;100</span>
+            </div>
+            <p class="legend-foot" id="legend-foot">The field is sampled on a 2.5 km grid; peaks sit on well nodes.</p>
+          </div>
+        </div>
+        <div class="map-scale" id="map-scale">
+          <div class="rule" id="scale-rule" style="width:80px"></div>
+          <span id="scale-label">100 km</span>
+        </div>
+      </div>
+      <div class="timeline">
+        <button class="play" id="play" type="button" aria-label="Play simulation">
+          <svg viewBox="0 0 12 12" id="play-icon" aria-hidden="true"><path d="M2 0.5 L11 6 L2 11.5 Z"/></svg>
+        </button>
+        <div class="yearbox">
+          <span class="eyebrow">Year</span>
+          <span class="y num" id="year-label">1</span>
+        </div>
+        <input type="range" id="year" min="1" max="125" step="1" value="1" aria-label="Simulation year">
+      </div>
+    </section>
+
+    <!-- ------------------------------------------------ analysis -->
+    <section class="analysis">
+      <div class="stack">
+
+        <div class="panel">
+          <div class="headline" id="headline">
+            <span class="eyebrow">Stored at the 90% fracture-pressure limit</span>
+            <div class="big"><span id="hl-value" class="num">—</span><em id="hl-unit">Gt CO₂</em></div>
+            <p class="caption" id="hl-caption">Running…</p>
+          </div>
+          <div class="facts">
+            <div><div class="k">Limit year</div><div class="v num" id="f-year">—</div></div>
+            <div><div class="k">Wells drilled</div><div class="v num" id="f-wells">—</div></div>
+            <div><div class="k">Peak pressure</div><div class="v num" id="f-peak">—</div></div>
+          </div>
+          <p class="warn" id="pool-warn" hidden></p>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Trajectories</h2><span class="hint">Hover to inspect · click to jump the map</span></div>
+
+          <div class="chart" id="ch-pressure">
+            <div class="chart-head">
+              <h3>Peak reservoir pressure</h3>
+              <span class="sub">% of fracture pressure</span>
+            </div>
+            <svg aria-label="Peak reservoir pressure over time" role="img"></svg>
+            <div class="chart-tip"></div>
+          </div>
+
+          <div class="chart" id="ch-rate">
+            <div class="chart-head">
+              <h3>Injection rate</h3>
+              <span class="sub">Mt CO₂ / yr</span>
+            </div>
+            <svg aria-label="Annual injection rate over time" role="img"></svg>
+            <div class="chart-tip"></div>
+          </div>
+
+          <div class="chart" id="ch-cum">
+            <div class="chart-head">
+              <h3>Cumulative stored</h3>
+              <span class="sub">Gt CO₂</span>
+            </div>
+            <svg aria-label="Cumulative CO2 stored over time" role="img"></svg>
+            <div class="chart-tip"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Storage units</h2><span class="hint" id="unit-hint">at year 1</span></div>
+          <div class="panel-body tablewrap">
+            <table class="units">
+              <thead>
+                <tr><th>Unit</th><th>Wells</th><th>Stored</th><th>Peak % frac</th></tr>
+              </thead>
+              <tbody id="unit-rows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <details class="panel method">
+          <summary>How this model works</summary>
+          <div class="panel-body">
+            <p>Wells are drilled on a logistic schedule: the number started in year <em>t</em> is the derivative of
+              <code>L / (1 + e^(−k(t−t₀)))</code>, with <code>t₀</code> fixed so that two wells exist in year 1.
+              Each well injects at the chosen rate for its injection life, then falls silent.</p>
+
+            <h4>Pressure</h4>
+            <p>Each well's pressure footprint uses the Nordbotten analytical solution for CO₂ injection into a
+              brine-filled aquifer — a two-region radial solution with a mobile CO₂ plume of radius <code>ψ</code>
+              inside a pressure front at <code>R = √(2.25·D·t)</code>. Footprints superpose linearly. Fracture
+              pressure follows Zhang &amp; Yin (2017): <code>p_frac = p_p + 0.75(σ_v − p_p)</code>, on 10 MPa/km
+              hydrostatic and 23 MPa/km lithostatic gradients.</p>
+
+            <h4>Fluid properties</h4>
+            <p>CO₂ density and viscosity, and brine viscosity, come from CoolProp evaluated at each unit's
+              reference pressure and temperature (25 °C/km on a 15 °C surface). Rock compressibility uses the
+              Hall (1953) porosity correlation.</p>
+
+            <h4>What the numbers mean</h4>
+            <p>The reported peak is the highest reservoir pressure anywhere in the seven storage units, expressed
+              as a percentage of that unit's fracture pressure. It is evaluated at well nodes, where the
+              logarithmic solution peaks — exactly as the published model's grid maximum does. The map shows the
+              same field sampled on a 2.5 km raster, so the raster reads cooler than the well-node peak; well
+              markers carry their own node values.</p>
+
+            <h4>Well placement</h4>
+            <p>Candidate locations are drawn from a 1 km lattice inside the seven unit outlines, unweighted, so
+              wells land in proportion to storage unit area — the intent stated in <code>example.py</code>:
+              <em>"proportion of total wells to place in each aquifer outline (based on area)"</em>.</p>
+            <p>This is the one place the explorer departs from <code>pressure.py</code>, which weights each lattice
+              point by its unit's area fraction. Since a unit already contributes lattice points in proportion to
+              its area, that weighting applies area twice and places wells in proportion to area <em>squared</em> —
+              starving the smaller units. The Captain Sandstone, the most permeable unit at 7000 mD, would take
+              0.3% of wells instead of 2.7%, and the thin Dornoch and Heimdal units 2.0% and 0.8% instead of 7.6%
+              and 4.6%.</p>
+          </div>
+        </details>
+
+      </div>
+    </section>
+  </div>
+
+  <footer class="credits">
+    <div class="cite">
+      <span class="eyebrow">Cite the model</span>
+      <p>de Jonge-Anderson, I., Johnson, G., Alcalde, J. &amp; Roberts, J. J. (2026).
+        CO2LOGIX: A first-order model of pressure-constrained CO₂ geological storage growth at the basin scale.
+        <em>International Journal of Greenhouse Gas Control</em> <strong>151</strong>, 104608.
+        <a href="https://doi.org/10.1016/j.ijggc.2026.104608" target="_blank" rel="noopener">doi.org/10.1016/j.ijggc.2026.104608</a></p>
+      <p>de Jonge-Anderson, I., Johnson, G., Alcalde, J. &amp; Roberts, J. J. (2025).
+        iaindejongeanderson/CO2LOGIX: UK case study release (v1.0). Zenodo.
+        <a href="https://doi.org/10.5281/zenodo.17484442" target="_blank" rel="noopener">doi.org/10.5281/zenodo.17484442</a>
+        · CC BY 4.0</p>
+    </div>
+    <div class="cite">
+      <span class="eyebrow">Data</span>
+      <p>Storage unit outlines and properties from the published CO2LOGIX input data. UK coastline from the
+        CO2LOGIX v1.0 shapefile library. Department of Civil &amp; Environmental Engineering, University of
+        Strathclyde.</p>
+    </div>
+  </footer>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
