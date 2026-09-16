@@ -57,7 +57,8 @@ SHP_UK = find(("input_data", "uk_project.shp"),
 CRS = "EPSG:32631"          # model CRS, metres
 WELL_LATTICE = 1000         # m - candidate well lattice (as in example.py)
 RASTER_CELL = 2500          # m - display raster cell size
-POOL_SIZE = 12000           # candidate well locations shipped to the browser
+POOL_SIZE = 15000           # candidate well locations shipped to the browser
+                            # (covers the 14,000-well ceiling plus ceil() overhead)
 POOL_SEED = 42              # matches random_state=42 in model/pressure.py
 
 # Reference parameters from Github/example.py

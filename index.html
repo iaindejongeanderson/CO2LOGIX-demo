@@ -426,8 +426,9 @@ footer.credits a:hover { border-bottom-color: var(--accent); }
                 <label for="c-L">Carrying capacity <span class="unit">L</span></label>
                 <span class="value" id="v-L">880 <span class="unit">wells</span></span>
               </div>
-              <input type="range" id="c-L" min="50" max="3000" step="10" value="880">
-              <p class="note">Ceiling on the total well count the logistic curve approaches.</p>
+              <input type="range" id="c-L" min="0" max="1000" step="1" value="509">
+              <p class="note">Ceiling on the total well count the logistic curve approaches. Log scale,
+                50 to 14,000 — the upper end is roughly the number of wells drilled on the UKCS to date.</p>
             </div>
           </div>
 

@@ -31,8 +31,9 @@ time peak reservoir pressure reaches 90% of fracture pressure.
 | **Headline** | Cumulative CO₂ stored at the year peak pressure first reaches 90% of fracture pressure. |
 | **Storage units** | Wells, CO₂ stored and peak pressure per unit. |
 
-Controls: growth rate `k`, carrying capacity `L`, rate per well, injection years per well,
-drilling period, and the placement draw. The three published growth scenarios
+Controls: growth rate `k`, carrying capacity `L` (50 to 14,000 wells, on a log slider — the top
+of the range is roughly the number of wells drilled on the UKCS to date), rate per well, injection
+years per well, drilling period, and the placement draw. The three published growth scenarios
 (`k` = 0.086 / 0.13 / 0.22) are one click away.
 
 On historic industry growth rates (`k` = 0.086), pressure reaches the 90% limit after **81 years**
@@ -65,6 +66,13 @@ field always lands on a well node — so the explorer evaluates the superpositio
 instead. This was checked against `model/pressure.py` over an 85-year run: the two max-pressure
 series agree to **0.000000 % of fracture pressure**, and the capacity series is identical.
 Run `tools/validate_against_model.py` from the release folder to reproduce that check.
+
+Distances between wells never change across a run — only each well's `R`, `ψ` and `p_c` do. So the
+neighbour list is built once and reused every year, with distances held in **log space**: the
+Nordbotten solution is a difference of logs, so the per-year inner loop needs no `sqrt` and no
+`log` at all. Pairs are stored once (`i < j`) and sorted by `j`, which makes the wells drilled by
+any given year a plain prefix of the list. At 14,000 wells this is 15–20× faster than recomputing
+each year (a 200-year run drops from ~82 s to ~4 s) and returns bit-identical results.
 
 ### Where the peak actually is
 

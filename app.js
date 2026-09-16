@@ -150,6 +150,13 @@
 
   /* ------------------------------------------------------------ engine */
 
+  // Carrying capacity spans 50 to 14,000, so its slider is logarithmic - a linear
+  // track would leave the published 880 sitting in the first 6 % of its travel.
+  const L_MIN = 50, L_MAX = 14000, L_POS = 1000;
+  const L_RATIO = Math.log(L_MAX / L_MIN);
+  const posToL = p => Math.max(L_MIN, Math.min(L_MAX,
+    Math.round(L_MIN * Math.exp(L_RATIO * p / L_POS) / 10) * 10));
+
   function lowerBound(arr, n, v) {
     let lo = 0, hi = n;
     while (lo < hi) {
@@ -209,17 +216,129 @@
       reach[a] = Math.max(Rmax, psiMax);
     }
 
+    // Distances between wells never change across the run - only each well's R, psi
+    // and p_c do. So the neighbour list is built once and reused every year, with
+    // distances stored in log space: the Nordbotten solution is a difference of logs,
+    // so the per-year inner loop then needs no sqrt and no log at all. Pairs are held
+    // once (i < j) and sorted by j, which makes the wells drilled by any given year a
+    // plain prefix of the list.
+    //
+    // Above the cap the list would cost more memory than it is worth, and the slower
+    // on-the-fly path in dPat() takes over.
+    const PAIR_CAP = 20e6;
+    let pairStart = null, pairI = null, pairLogR = null, nPairs = 0;
+
+    // pass 1: count. pass 2 (fill = true): write.
+    function scanPairs(fill) {
+      let c = 0;
+      for (let j = 0; j < N; j++) {
+        if (fill) pairStart[j] = c;
+        const xj = wx[j], yj = wy[j], reachJ = reach[waq[j]];
+        for (let a = 0; a < NU; a++) {
+          const xs = sortX[a], ids = sortI[a], n = xs.length;
+          if (!n) continue;
+          const rch = reach[a] > reachJ ? reach[a] : reachJ;
+          const r2max = rch * rch, hi = xj + rch;
+          for (let p = lowerBound(xs, n, xj - rch); p < n && xs[p] <= hi; p++) {
+            const i = ids[p];
+            if (i >= j) continue;
+            const dy = yj - wy[i];
+            if (dy > rch || dy < -rch) continue;
+            const dx = xj - xs[p];
+            const d2 = dx * dx + dy * dy;
+            if (d2 > r2max) continue;
+            if (fill) {
+              pairI[c] = i;
+              pairLogR[c] = 0.5 * Math.log(d2 > 0.01 ? d2 : 0.01);
+            }
+            c++;
+          }
+        }
+      }
+      return c;
+    }
+
+    nPairs = scanPairs(false);
+    if (nPairs <= PAIR_CAP && N < 65536) {
+      pairStart = new Int32Array(N + 1);
+      pairI = new Uint16Array(nPairs);
+      pairLogR = new Float32Array(nPairs);
+      scanPairs(true);
+      pairStart[N] = nPairs;
+    } else {
+      pairStart = pairI = pairLogR = null;
+    }
+
     return {
       P, t0, Q, pc, N, wx, wy, waq, ws, we, wellsPerYear, exhausted,
-      sortI, sortX, reach,
+      sortI, sortX, reach, pairStart, pairI, pairLogR, nPairs,
       totalYears: P.years + P.injYears,
       R: new Float64Array(N), psi: new Float64Array(N), wellVal: new Float64Array(N),
+      // per-well, per-year coefficients of the Nordbotten solution in log space
+      cA: new Float64Array(N), cB: new Float64Array(N), cC: new Float64Array(N),
+      lp: new Float64Array(N), lR: new Float64Array(N), acc: new Float64Array(N),
       maxDP: [], activeWells: [], cumulative: [],
       unitPeak: new Float64Array(NU).fill(0),
       unitStored: new Float64Array(NU),
       unitWells: new Int32Array(NU),
       cum: 0
     };
+  }
+
+  const LOG_SELF = Math.log(0.1);   // the model pins the well's own node at r = 0.1 m
+
+  // Fills st.wellVal for `year` and returns the year's summary statistics.
+  function evaluateYear(st, year) {
+    const { N, ws, we, waq, P, Q, pc, cA, cB, cC, lp, lR, acc, wellVal,
+            pairStart, pairI, pairLogR } = st;
+
+    let nDrilled = 0;
+    while (nDrilled < N && ws[nDrilled] <= year) nDrilled++;
+
+    for (let j = 0; j < nDrilled; j++) {
+      const a = waq[j];
+      const ts = (year <= we[j] ? year - ws[j] + 1 : P.injYears) * SPY;
+      const lRj = Math.log(Math.sqrt(2.25 * Dd[a] * ts));
+      const lpj = Math.log(expOmega[a] * Math.sqrt(Q[a] * ts / (PI * phi[a] * hh[a])));
+      lR[j] = lRj; lp[j] = lpj;
+      cA[j] = pc[a] * gamma[a];
+      cB[j] = pc[a] * (lRj - lpj);
+      cC[j] = pc[a];
+      acc[j] = cA[j] * (lpj - LOG_SELF) + cB[j];   // the well's own contribution
+    }
+
+    if (pairI) {
+      for (let j = 0; j < nDrilled; j++) {
+        const s = pairStart[j], e = pairStart[j + 1];
+        if (s === e) continue;
+        const Aj = cA[j], Bj = cB[j], Cj = cC[j], lpj = lp[j], lRj = lR[j];
+        let accj = 0;
+        for (let p = s; p < e; p++) {
+          const i = pairI[p], lr = pairLogR[p];
+          if (lr <= lpj) acc[i] += Aj * (lpj - lr) + Bj;        // i sits in j's plume
+          else if (lr <= lRj) acc[i] += Cj * (lRj - lr);        // i sits in j's pressure front
+          if (lr <= lp[i]) accj += cA[i] * (lp[i] - lr) + cB[i];
+          else if (lr <= lR[i]) accj += cC[i] * (lR[i] - lr);
+        }
+        acc[j] += accj;
+      }
+    } else {
+      // fallback: recompute from scratch, no neighbour list
+      ages(st, year);
+      for (let i = 0; i < nDrilled; i++) acc[i] = dPat(st, st.wx[i], st.wy[i], year, i);
+    }
+
+    let peak = 0, active = 0;
+    const unitActive = new Int32Array(NU);
+    for (let i = 0; i < nDrilled; i++) {
+      const a = waq[i];
+      const v = (acc[i] + pRef[a]) / pFrac[a] * 100;
+      wellVal[i] = v;
+      if (v > peak) peak = v;
+      if (v > st.unitPeak[a]) st.unitPeak[a] = v;
+      if (year <= we[i]) { active++; unitActive[a]++; }
+    }
+    return { peak, active, unitActive, nDrilled };
   }
 
   // Fill R / psi for every well that exists in `year`.
@@ -267,23 +386,9 @@
   }
 
   function runYear(st, year) {
-    ages(st, year);
-    const { N, ws, we, waq, wx, wy, wellVal, P } = st;
-    let peak = 0, active = 0;
-    const unitActive = new Int32Array(NU);
-
-    for (let i = 0; i < N; i++) {
-      if (ws[i] > year) break;
-      const a = waq[i];
-      const val = (dPat(st, wx[i], wy[i], year, i) + pRef[a]) / pFrac[a] * 100;
-      wellVal[i] = val;
-      if (val > peak) peak = val;
-      if (val > st.unitPeak[a]) st.unitPeak[a] = val;
-      if (year <= we[i]) { active++; unitActive[a]++; }
-    }
-
-    for (let a = 0; a < NU; a++) st.unitStored[a] += unitActive[a] * P.rate;
-    st.cum += active * P.rate;
+    const { peak, active, unitActive } = evaluateYear(st, year);
+    for (let a = 0; a < NU; a++) st.unitStored[a] += unitActive[a] * st.P.rate;
+    st.cum += active * st.P.rate;
     st.maxDP.push(peak);
     st.activeWells.push(active);
     st.cumulative.push(st.cum);
@@ -291,12 +396,12 @@
 
   /* ------------------------------------------------------------ raster */
 
-  const acc = new Float32Array(NX * NY);
+  const rAcc = new Float32Array(NX * NY);
   const valGrid = new Float32Array(NX * NY);
   const imgData = new ImageData(NX, NY);
 
   function buildRaster(st, year) {
-    acc.fill(0);
+    rAcc.fill(0);
     ages(st, year);
     const { N, ws, waq, wx, wy, R, psi, pc } = st;
 
@@ -317,8 +422,8 @@
           const X = G.x0 + CELL * (gi + 0.5) - wx[j];
           let r = Math.sqrt(X * X + Y * Y);
           if (r < 0.1) r = 0.1;
-          if (r <= pj) acc[row + gi] += (gamma[a] * Math.log(pj / r) + Math.log(Rj / pj)) * pc[a];
-          else if (r <= Rj) acc[row + gi] += Math.log(Rj / r) * pc[a];
+          if (r <= pj) rAcc[row + gi] += (gamma[a] * Math.log(pj / r) + Math.log(Rj / pj)) * pc[a];
+          else if (r <= Rj) rAcc[row + gi] += Math.log(Rj / r) * pc[a];
         }
       }
     }
@@ -329,7 +434,7 @@
       for (let gi = 0; gi < NX; gi++) {
         const a = aqGrid[src + gi], o = (dst + gi) * 4;
         if (a < 0) { px[o + 3] = 0; valGrid[src + gi] = NaN; continue; }
-        const v = (acc[src + gi] + pRef[a]) / pFrac[a] * 100;
+        const v = (rAcc[src + gi] + pRef[a]) / pFrac[a] * 100;
         valGrid[src + gi] = v;
         const c = rampRGB(v);
         px[o] = c[0]; px[o + 1] = c[1]; px[o + 2] = c[2]; px[o + 3] = 255;
@@ -703,7 +808,7 @@
   function readParams() {
     const num = id => +document.getElementById(id).value;
     return {
-      k: num("c-k"), L: Math.round(num("c-L")), rate: num("c-rate"),
+      k: num("c-k"), L: posToL(num("c-L")), rate: num("c-rate"),
       injYears: Math.round(num("c-inj")), years: Math.round(num("c-years")),
       draw: Math.round(num("c-seed"))
     };
@@ -715,6 +820,7 @@
     const st = prepare(P);
     state.st = st;
     let year = 1;
+    const tStart = performance.now();
 
     (function chunk() {
       if (token !== state.token) return;
@@ -738,7 +844,8 @@
       st.wellsBy = wellsBy;
       state.result = st;
 
-      setStatus(`${st.N.toLocaleString()} wells · ${st.totalYears} years`, 1);
+      const elapsed = performance.now() - tStart;
+      setStatus(`${st.N.toLocaleString()} wells · ${st.totalYears} years · ${(elapsed / 1000).toFixed(1)} s`, 1);
       document.getElementById("year").max = st.totalYears;
       // open on the year the pressure limit bites - the frame worth seeing first
       if (state.firstRun) {
@@ -759,13 +866,10 @@
     const st = state.result;
     if (!st) return;
     if (layers.pressure.checked) buildRaster(st, y);
-    ages(st, y);
+    const { nDrilled } = evaluateYear(st, y);
     let atLimit = 0, over = 0;
-    for (let i = 0; i < st.N; i++) {
-      if (st.ws[i] > y) break;
-      const a = st.waq[i];
-      const v = (dPat(st, st.wx[i], st.wy[i], y, i) + pRef[a]) / pFrac[a] * 100;
-      st.wellVal[i] = v;
+    for (let i = 0; i < nDrilled; i++) {
+      const v = st.wellVal[i];
       if (v >= 100) over++; else if (v >= 90) atLimit++;
     }
     drawMap(st, y);
@@ -786,7 +890,7 @@
 
   const fmtField = {
     "c-k": v => (+v).toFixed(3),
-    "c-L": v => Math.round(v).toLocaleString() + ' <span class="unit">wells</span>',
+    "c-L": v => posToL(+v).toLocaleString() + ' <span class="unit">wells</span>',
     "c-rate": v => (+v).toFixed(1) + ' <span class="unit">Mt/yr</span>',
     "c-inj": v => Math.round(v) + ' <span class="unit">yr</span>',
     "c-years": v => Math.round(v) + ' <span class="unit">yr</span>',
